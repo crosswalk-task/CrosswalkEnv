@@ -12,10 +12,8 @@ AGENT_STATUS_DEAD = "dead"
 class Agent(GameObject):
     TARGET_LANE = 0
 
-    def __init__(self, agent_x_range, map_grid_width, map_grid_height, pix_square_size, steps_per_second, player_asset_info, debug):
+    def __init__(self, agent_x_range, map_grid_width, map_grid_height, pix_square_size, steps_per_second, player_asset_info):
         fixed_speed = 2.5
-        if debug:
-            fixed_speed *= 5
         self.init_pos = (int(map_grid_width / 2), map_grid_height - 1)
         cur_location = np.array([self.init_pos[0], self.init_pos[1]], dtype=float)
         super().__init__(fixed_speed, cur_location, pix_square_size, steps_per_second)

@@ -4,7 +4,7 @@ import pygame
 import numpy as np
 
 from crosswalk_env.world.world import World
-from crosswalk_env.common import Car, load_player_asset_info, Penalty, get_max_car_grid_width, load_car_details_dict, Action, ACTION_TO_DELTA, ACTION_DURATION, is_overlapping, is_overlapping_rectangles
+from crosswalk_env.common import Car, load_player_asset_info, Penalty, get_max_car_grid_width, load_car_details_dict, Action, ACTION_TO_DELTA, ACTION_DURATION, ACTION_LATENCY, is_overlapping, is_overlapping_rectangles
 
 class CrosswalkEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -34,17 +34,13 @@ class CrosswalkEnv(gym.Env):
                  fixed_episode_seed_range=None,
                  render_mode=None,
                  realtime=False,
-                 extra_reward_using_crosswalk=False,
-                 debug=False,
-                 version=1):
+                 extra_reward_using_crosswalk=False):
         if width < 12: raise Exception("minimum width is 13")
         if height < 6: raise Exception("minimum height is 6")
         if initial_height_padding < 0: raise Exception("initial_height_padding can not be negative")
         if camera_height < 7: raise Exception("minimum camera_height is 7")
         if camera_height%2 == 0: raise Exception("minimum camera_height should be an odd number")
         if episode_duration_sec < 10: raise Exception("minimum episode_duration_sec is 10")
-        if version > 2: raise Exception("version should be 1 or 2")
-        self.version = version
         self.title = title
         self.map_grid_width = width
         self.map_grid_height = height
@@ -67,7 +63,6 @@ class CrosswalkEnv(gym.Env):
         assert fixed_episode_seed_range is None or len(fixed_episode_seed_range) > 0
         self.fixed_episode_seed_range = fixed_episode_seed_range
         self.fixed_episode_seed_idx = 0
-        self.debug = debug
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.render_sprite = render_mode is not None
@@ -131,16 +126,12 @@ class CrosswalkEnv(gym.Env):
             self.pix_square_size,
             self.steps_per_second,
             self.np_random,
-            self.debug,
             self.player_asset_info,
             self.car_details_dict,
         )
 
         if self.render_sprite:
             self.render()
-
-        if self.debug:
-            print(self.world.cars)
 
         self.obs = None
         self.info = None
@@ -176,12 +167,12 @@ class CrosswalkEnv(gym.Env):
         if self.extra_reward_using_crosswalk:
             prev_agent_x, prev_agent_y = self.world.agent.get_cur_location_grid()
         cumulative_reward = -self.world.calculate_cum_crossing_rewards()
-        action_duration = ACTION_DURATION[action]
+        action_duration = ACTION_DURATION[action] + ACTION_LATENCY[action]
         self.real_time_step_passed += action_duration
         if not self.realtime:
             # interacting with the environment using RL algorithm
             self.world.agent.update_target(action)
-            for _ in range(action_duration + 1 if self.version > 1 else action_duration):
+            for _ in range(action_duration):
                 reward, terminated = self._check_gameover()
                 cumulative_reward += reward
                 self.apply_time_and_render(self.step_ms)
@@ -194,8 +185,8 @@ class CrosswalkEnv(gym.Env):
             while True:
                 if self.elapsed >= self.step_ms:
                     self.elapsed -= self.step_ms
+                    cur_count += 1
                     if cur_count >= action_duration: break
-                    cur_count += 1 # NOTE: extra latency for human perception + increased time overs
                     reward, terminated = self._check_gameover()
                     cumulative_reward += reward
                     self.game_over = terminated
@@ -858,7 +849,6 @@ class CrosswalkEnv(gym.Env):
                     "camera_width": self.camera_width,
                     "camera_height": self.camera_height,
                     "gamescreen_width_fixed": self.gamescreen_width_fixed,
-                    "debug": self.debug,
                     "render_mode": self.render_mode,
                 },
                 "episode_configuration": {

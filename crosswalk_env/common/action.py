@@ -34,3 +34,12 @@ ACTION_DURATION = {
     Action.RIGHT.value: 4,
     Action.LEFT.value: 4,
 }
+
+# NOTE: extra latency for human perception + increased time overs
+ACTION_LATENCY = {
+    Action.NOTHING.value: 1,
+    Action.UP.value: 1,
+    Action.DOWN.value: 1,
+    Action.RIGHT.value: 1,
+    Action.LEFT.value: 1,
+}
