@@ -23,8 +23,8 @@ class CrosswalkEnv(gym.Env):
     def __init__(self,
                  title="Crosswalk Task",
                  width=25,
-                 height=25, # 21 was too easy
-                 initial_height_padding=0, # 5 for same starting states
+                 height=25,
+                 initial_height_padding=0,
                  camera_width=11,
                  camera_height=7,
                  steps_per_second=10,
@@ -94,9 +94,7 @@ class CrosswalkEnv(gym.Env):
         agent_max_x = self.map_grid_width - 1 - agent_x_buffer
         self.agent_x_range = (agent_min_x, agent_max_x)
 
-        # action
         self.action_space = gym.spaces.Discrete(5)
-        # obs
         self._define_observation_space()
 
     def reset(self, seed=None, options=None):
@@ -139,31 +137,6 @@ class CrosswalkEnv(gym.Env):
         return self.obs, self.info
 
     def step(self, action):
-        """Run one timestep of the environment's dynamics using the agent actions.
-
-        When the end of an episode is reached (``terminated or truncated``), it is necessary to call `reset` to
-        reset this environment's state for the next episode.
-
-        Args:
-            action (ActType): an action provided by the agent to update the environment state.
-
-        Returns:
-            observation (ObsType): An element of the environment's :attr:`observation_space` as the next observation due to the agent actions.
-                An example is a numpy array containing the positions and velocities of the pole in CartPole.
-            reward (SupportsFloat): The reward as a result of taking the action.
-            terminated (bool): Whether the agent reaches the terminal state (as defined under the MDP of the task)
-                which can be positive or negative. An example is reaching the goal state or moving into the lava from
-                the Sutton and Barto Gridworld. If true, the user needs to call :meth:`reset`.
-            truncated (bool): Whether the truncation condition outside the scope of the MDP is satisfied.
-                Typically, this is a timelimit, but could also be used to indicate an agent physically going out of bounds.
-                Can be used to end the episode prematurely before a terminal state is reached.
-                If true, the user needs to call :meth:`reset`.
-            info (dict): Contains auxiliary diagnostic information (helpful for debugging, learning, and logging).
-                This might, for instance, contain: metrics that describe the agent's performance state, variables that are
-                hidden from observations, or individual reward terms that are combined to produce the total reward.
-                In OpenAI Gym <v26, it contains "TimeLimit.truncated" to distinguish truncation and termination,
-                however this is deprecated in favour of returning terminated and truncated variables.
-        """
         if self.extra_reward_using_crosswalk:
             prev_agent_x, prev_agent_y = self.world.agent.get_cur_location_grid()
         cumulative_reward = -self.world.calculate_cum_crossing_rewards()
@@ -411,97 +384,6 @@ class CrosswalkEnv(gym.Env):
             self.apply_time_and_render(dt)
 
     def _define_observation_space(self):
-        """
-        # Observation space
-        Observations have boolean(0/1) values at indices: 5, 6, 7, 8, 9, 10, 11, 12, 13, 33, 34, 35, 36, 37, 38, 39, 40.
-        All the other observations are scaled within 0 ~ 1 range.
-        The total size of the observation space could vary depending on the camera_height configuration.
-
-        ## Meta info [0 ~ 4]
-        - play time left
-            - 1 = initialized
-            - 0 ~ 1 = time remaining
-            - 0 = game over (time over, death, early finish)
-        - closeness to unreachable area
-            - 0 = only reachable area in sight
-            - 0 ~ 1 = closeness to nearest unreachable tile in the direction
-            - 1 = adjacent to unreachable tile, can't move in the direction
-            - size: 4 (directions: up, down, right, left)
-
-        ## Tile types near the agent [5 ~ 12]
-        - is dangerous
-            - 0 = safe row or end of the map
-            - 1 = dangerous row where cars can appear
-            - size: 3 (current, up, down)
-        - is crosswalk
-            - 0 = not crosswalk
-            - 1 = crosswalk or crosswalk activation tile in the safe zone
-            - size: 5 (current, up, down, right, left)
-
-        ## Target road info [13 ~ 23]
-        Information about the target road that the agent is crossing or should cross
-        - crosswalk visible
-            - 0 = no crosswalk visible
-            - 1 = crosswalk in sight
-        - car penalty
-            - 0.1, 0.5, 1.0 = penalty based on car color (100, 500, 1000)
-        - y distance from the end of the road
-            - 0.0 = can escape the road after moving up 1 more tile
-            - 0.25 = can escape the road after moving up 2 more tile
-            - 0.50 = can escape the road after moving up 3 more tile
-            - 0.75 = can escape the road after moving up 4 more tile
-            - 1.0 = in the safe zone, before crossing the road
-        - y distance from the start of the road
-            - 0.0 = in the safe zone, before crossing the road
-            - 0.25 = agent can escape the road after moving down 1 more tile
-            - 0.50 = agent can escape the road after moving down 2 more tile
-            - 0.75 = agent can escape the road after moving down 3 more tile
-            - 1.0 = agent can escape the road after moving down 4 more tile
-        - total number of cars visible on the road
-            - 0 ~ 1 = 0 ~ 6 cars in sight
-            - NOTE: each road can have maximum of 6 cars
-        - number of cars coming toward the agent
-            - 0 ~ 1 = 0 ~ 6 cars in the direction
-            - size: 6 (each quadrant: NW, NE, SE, SW / same row: left, right)
-
-        ## Distance from crosswalks [24 ~ 32]
-        - closeness to three nearest crosswalk
-            - 0 = crosswalk not visible
-            - 0 ~ 1 = closeness (1 - distance from the target crosswalk)
-            - 1 = in the same column or row as the target crosswalk
-            - size: 3 (for each direction: up, right, left) * 3 crosswalks
-
-        ## Cars [33 ~ 112]
-        Information about the nearest cars in each lane for each direction (left and right sides).
-        Only consider the roads right next to the agent (1 in front of the agent, 1 behind the agent, or the 1 the agent is crossing).
-        Each lane can only have 1 or 2 cars.
-        Ignore the ones moving away since they are the same as out of sight.
-        - car existance in nearby tiles (NW, N, NE, E, SE, S, SW, W)
-            - 0 = no car in the tile
-            - 1 = part of the car in the tile
-            - size: 8 (directions: 3 rows x 3 columns around the agent)
-            x x x
-            x A x
-            x x x
-        - closeness of car head (closest dangerous cars)
-            - 0 = no car coming toward the agent
-            - 0 ~ 1 = closeness of the head of the car coming toward the agent
-            - 1 = car right in front of the agent
-            - size: 2 cars * 6 lanes * 2 (left vs right)
-        - closeness of car tail (closest dangerous cars)
-            - 0 = no car coming toward the agent
-            - 0 ~ 1 = closeness of the tail of the car coming toward the agent
-            - 1 = car right in front of the agent
-            - size: 2 cars * 6 lanes * 2 (left vs right)
-        - distance until car tail (closest dangerous car)
-            - 0 = no car in front of the agent
-            - 0 ~ 1 = distance from the tail of the car that is in front of the agent
-            - size: 6 lanes * 2 (left vs right)
-        - car speed (closest dangerous car)
-            - 0 = no car or stopped
-            - 0 ~ 1 = speed of 3.0 ~ 4.5 coming toward the agent
-            - size: 6 lanes * 2 (left vs right)
-        """
         self.observation_space = gym.spaces.Box(
             low=np.array([0.0 for _ in range(113)]),
             high=np.array([1.0 for _ in range(113)]),
@@ -553,11 +435,6 @@ class CrosswalkEnv(gym.Env):
             if self.agent_x_range[1] < grid_x_right_end:
                 right_end_closeness = (x_visible_distance - (self.agent_x_range[1] - agent_x)) / x_visible_distance
             obs += [time_left, top_end_closeness, bottom_end_closeness, left_end_closeness, right_end_closeness]
-            # print("agent:", agent_x, agent_y, self.camera_height, self.camera_width)
-            # print("grid_top_y:", grid_top_y, " top_end_of_map_visible:", top_end_closeness, " distance:", agent_y - agent_y_range[0])
-            # print("grid_bottom_y:", grid_bottom_y, " bottom_end_closeness:", bottom_end_closeness, " distance:", agent_y_range[1] - agent_y)
-            # print("grid_x_left_end:", grid_x_left_end, ", left_end_closeness:", left_end_closeness, " distance:", agent_x - self.agent_x_range[0])
-            # print("grid_x_right_end:", grid_x_right_end, ", right_end_closeness:", right_end_closeness, " distance:", self.agent_x_range[1] - agent_x)
         assert len(obs) == 5
 
         # Tile types near the agent
@@ -580,14 +457,6 @@ class CrosswalkEnv(gym.Env):
                     is_crosswalk.append(1 if self.world.crosswalk_map[grid_y][grid_x] else 0)
             obs += is_dangerous
             obs += is_crosswalk
-            # print("is_dangerous cur:", obs[5])
-            # print("is_dangerous up:", obs[6])
-            # print("is_dangerous down:", obs[7])
-            # print("is_crosswalk cur:", obs[8])
-            # print("is_crosswalk: up", obs[9])
-            # print("is_crosswalk down:", obs[10])
-            # print("is_crosswalk right:", obs[11])
-            # print("is_crosswalk left:", obs[12])
         assert len(obs) == 13
 
         # Target road info
@@ -649,12 +518,6 @@ class CrosswalkEnv(gym.Env):
             crosswalk_visible = 1.0 if self.target_road_crosswalk_visible else 0.0
             obs += [crosswalk_visible, penalty, dist_end_of_target_road, dist_start_of_target_road, visible_car_count]
             obs += dangerous_car_counts
-            # print("crosswalk_visible:", crosswalk_visible)
-            # print("penalty:", penalty)
-            # print("dist_end_of_target_road:", dist_end_of_target_road)
-            # print("dist_start_of_target_road:", dist_start_of_target_road)
-            # print("visible_car_count:", visible_car_count)
-            # print("dangerous_car_counts:", dangerous_car_counts)
         assert len(obs) == 24
 
         # Distance from crosswalks
@@ -689,11 +552,6 @@ class CrosswalkEnv(gym.Env):
             while len(crosswalk_closeness_list) < 3 * 3:
                 crosswalk_closeness_list += [0.0, 0.0, 0.0] # fill up defaults
             obs += crosswalk_closeness_list
-            # for i in range(3):
-            #     print(f"crosswalk {i}")
-            #     print("up closeness to crosswalk:",  crosswalk_closeness_list[3*i])
-            #     print("right closeness to crosswalk:",  crosswalk_closeness_list[3*i + 1])
-            #     print("left closeness to crosswalk:",  crosswalk_closeness_list[3*i + 2])
         assert len(obs) == 33
 
         # Cars
@@ -714,10 +572,6 @@ class CrosswalkEnv(gym.Env):
                             break
                 car_in_adjecent_tiles.append(1.0 if car_in_tile else 0.0)
             obs += car_in_adjecent_tiles
-            # print("car_in_adjecent_tiles up:", car_in_adjecent_tiles[1])
-            # print("car_in_adjecent_tiles down:", car_in_adjecent_tiles[5])
-            # print("car_in_adjecent_tiles right:", car_in_adjecent_tiles[3])
-            # print("car_in_adjecent_tiles left:", car_in_adjecent_tiles[7])
 
             dangerous_car_info_list = []
             visible_left_width = agent_left_x - visible_x_left_end
@@ -787,8 +641,6 @@ class CrosswalkEnv(gym.Env):
                 dangerous_car_info_list += [left_cars[1][0], left_cars[1][1]] # [head closeness, tail closeness]
                 dangerous_car_info_list += [right_cars[1][0], right_cars[1][1]] # [head closeness, tail closeness]
             obs += dangerous_car_info_list
-            # print(f"[{grid_y}] left cars:", left_cars[0], left_cars[1][0])
-            # print(f"[{grid_y}] right cars:", right_cars[0], right_cars[1][0])
         assert len(obs) == 113
         assert max(obs) <= 1.0 and min(obs) >= 0.0
         self.obs = np.array(obs)
@@ -930,10 +782,9 @@ class CrosswalkEnv(gym.Env):
                 "cur_location": agent.cur_location,
                 "target_location": agent.target_location,
                 "facing_direction": agent.last_direction,
-                # NOTE: hitbox = [top_y, bottom_y, left_x, right_x]
+                # NOTE: hitbox = [top_y, bottom_y, left_x, right_x]; agent_width = agent_right_x - agent_left_x
                 "top_y": agent_top_y,
                 "bottom_y": agent_bottom_y,
-                # NOTE: agent_width = agent_right_x - agent_left_x
                 "left_x": agent_left_x,
                 "right_x": agent_right_x, 
                 "dead": agent.is_dead,
@@ -941,10 +792,6 @@ class CrosswalkEnv(gym.Env):
             "target_road": target_road_info,
             "visible_cars": visible_cars_per_lane,
         }
-        # road in sight
-        # for i in range(len(self.world.roads.elements), 0, -1):
-        #     if grid_bottom_y < road.top_y: continue # out of sight: below the map
-        #     if road.bottom_y < grid_top_y: continue # out of sight: above the map
 
     def _game_screen_relative_positions(self):
         agent = self.world.agent
