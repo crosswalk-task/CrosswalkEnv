@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "crosswalk-env"
-version = "1.0.0"
-description = "A Gymnasium environment for pedestrian crosswalk tasks"
+version = "0.0.1"
+description = "A Gymnasium environment for risky decision-making"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 license = { text = "MIT" }
@@ -20,11 +20,15 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://crosswalk-task.github.io"
 Repository = "https://github.com/crosswalk-task/CrosswalkEnv"
 Issues = "https://github.com/crosswalk-task/CrosswalkEnv/issues"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 
 [tool.setuptools.package-data]
 crosswalk_env = [
