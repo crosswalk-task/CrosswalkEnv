@@ -20,21 +20,22 @@ class CrosswalkEnv(gym.Env):
     BONUS_SCORE_PER_SEC = 50
     TIME_OVER_ALERT_SEC = 10
 
-    def __init__(self,
-                 title="Crosswalk Task",
-                 width=25,
-                 height=25,
-                 initial_height_padding=0,
-                 camera_width=11,
-                 camera_height=7,
-                 steps_per_second=10,
-                 gamescreen_width_fixed=False,
-                 episode_duration_sec=30,
-                 gameover_screen_time=5000,
-                 fixed_episode_seed_range=None,
-                 render_mode=None,
-                 realtime=False,
-                 extra_reward_using_crosswalk=False):
+    def __init__(
+            self,
+            title="Crosswalk Task",
+            width=25,
+            height=25,
+            initial_height_padding=0,
+            camera_width=11,
+            camera_height=7,
+            steps_per_second=10,
+            gamescreen_width_fixed=False,
+            episode_duration_sec=30,
+            gameover_screen_time=5000,
+            fixed_episode_seed_range=None,
+            render_mode=None,
+            realtime=False
+        ):
         if width < 12: raise Exception("minimum width is 13")
         if height < 6: raise Exception("minimum height is 6")
         if initial_height_padding < 0: raise Exception("initial_height_padding can not be negative")
@@ -58,7 +59,6 @@ class CrosswalkEnv(gym.Env):
         self.camera_height_pixel = camera_height * self.pix_square_size
         self.map_width = self.map_grid_width * self.pix_square_size
         self.map_height = self.map_grid_height * self.pix_square_size
-        self.extra_reward_using_crosswalk = extra_reward_using_crosswalk
         self.gamescreen_width_fixed = gamescreen_width_fixed
         assert fixed_episode_seed_range is None or len(fixed_episode_seed_range) > 0
         self.fixed_episode_seed_range = fixed_episode_seed_range
@@ -137,8 +137,6 @@ class CrosswalkEnv(gym.Env):
         return self.obs, self.info
 
     def step(self, action):
-        if self.extra_reward_using_crosswalk:
-            prev_agent_x, prev_agent_y = self.world.agent.get_cur_location_grid()
         cumulative_reward = -self.world.calculate_cum_crossing_rewards()
         action_duration = ACTION_DURATION[action] + ACTION_LATENCY[action]
         self.real_time_step_passed += action_duration
@@ -168,22 +166,6 @@ class CrosswalkEnv(gym.Env):
                 dt = self.clock_tick()
                 self.elapsed += dt
                 self.apply_time_and_render(dt)
-
-        # reward shaping to motivate usage of crosswalk
-        if self.extra_reward_using_crosswalk:
-            is_crosswalk = self.world.crosswalk_map
-            agent_x, agent_y = self.world.agent.get_cur_location_grid()
-            if action == Action.UP.value:
-                if is_crosswalk[prev_agent_y][prev_agent_x]:
-                    cumulative_reward += 10 # used the crosswalk
-            elif action == Action.DOWN.value:
-                if not is_crosswalk[prev_agent_y][prev_agent_x] and is_crosswalk[agent_y][agent_x]:
-                    cumulative_reward -= 10 # went back to the crosswalk
-            elif action in [Action.RIGHT.value, Action.LEFT.value]:
-                if not is_crosswalk[prev_agent_y][prev_agent_x] and is_crosswalk[agent_y][agent_x]:
-                    cumulative_reward += 20 # entered crosswalk
-                if is_crosswalk[prev_agent_y][prev_agent_x] and not is_crosswalk[agent_y][agent_x]:
-                    cumulative_reward -= 20 # leaved crosswalk
 
         # An episode is finished if the agent has reached the target lane
         if not self.world.agent.is_dead and self.world.target_lane_reached():
