@@ -225,19 +225,19 @@ if __name__ == "__main__":
     )
 
     arg_parser.add_argument(
-        '--red-car_penalty',
+        '--red-car-penalty',
         type=int,
         default=1000,
         help='penalty on collision with red vehicles (default: 1000; set to 0 to disable red car appearance)',
     )
     arg_parser.add_argument(
-        '--yellow-car_penalty',
+        '--yellow-car-penalty',
         type=int,
         default=500,
         help='penalty on collision with yellow vehicles (default: 500; set to 0 to disable yellow car appearance)',
     )
     arg_parser.add_argument(
-        '--green-car_penalty',
+        '--green-car-penalty',
         type=int,
         default=100,
         help='penalty on collision with green vehicles (default: 100; set to 0 to disable green car appearance)',
