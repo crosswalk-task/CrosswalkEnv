@@ -63,8 +63,17 @@ def _play_episode(env, episode_seed):
                     last_action = Action.NOTHING
                     break
 
-def _play_session(save_dir, session_id, max_seconds, max_episodes=-1, base_seed=0):
-    env = CrosswalkEnv(render_mode="human", realtime=True)
+def _play_session(
+        save_dir,
+        session_id,
+        max_seconds,
+        max_episodes=-1,
+        base_seed=0,
+    ):
+    env = CrosswalkEnv(
+        render_mode="human",
+        realtime=True
+    )
     start_timestamp = int(time.time())
     episode_count = 0
     while True:
@@ -87,9 +96,23 @@ def _play_session(save_dir, session_id, max_seconds, max_episodes=-1, base_seed=
             np.save(f"{save_dir}/{episode_id:04d}/play_infos.npy", np.array(play_infos, dtype=object), allow_pickle=True)
     env.close()
 
-def run_session(subj_id=1, session_id=1, seed=0, max_episodes=-1, max_seconds=1200, save=True, base_save_dir="data"):
+def run_session(
+        subj_id=1,
+        session_id=1,
+        max_episodes=-1,
+        max_seconds=1200,
+        seed=0,
+        save=True,
+        base_save_dir="data",
+    ):
     if not save:
-        _play_session(save_dir=None, session_id=session_id, base_seed=seed, max_episodes=max_episodes, max_seconds=max_seconds)
+        _play_session(
+            save_dir=None,
+            session_id=session_id,
+            max_seconds=max_seconds,
+            max_episodes=max_episodes,
+            base_seed=seed,
+        )
         return
 
     save_dir = os.path.join(base_save_dir, f"{subj_id}")
@@ -104,25 +127,65 @@ def run_session(subj_id=1, session_id=1, seed=0, max_episodes=-1, max_seconds=12
         start_time = datetime.now()
         writer.writerow([subj_id, session_id, seed, max_episodes, max_seconds, start_time.isoformat(timespec="seconds")])
 
-    _play_session(save_dir=save_dir, session_id=session_id, base_seed=seed, max_episodes=max_episodes, max_seconds=max_seconds)
+    _play_session(
+        save_dir=save_dir,
+        session_id=session_id,
+        max_episodes=max_episodes,
+        max_seconds=max_seconds,
+        base_seed=seed,
+    )
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Run for test")
-    arg_parser.add_argument('--subj-id', type=int, default=1, help='subject ID')
-    arg_parser.add_argument('--session-id', type=int, default=0, help='session ID')
-    arg_parser.add_argument('--seed', type=int, default=0, help='base seed value for configuring the initial episode of the session')
-    arg_parser.add_argument('--max-episodes', type=int, default=-1, help='total number of episodes')
-    arg_parser.add_argument('--max-seconds', type=int, default=1200, help='ends after reaching max seconds (default: 20 min)')
-    arg_parser.add_argument("--no-save", action="store_true", help="do not save any data")
-    arg_parser.add_argument('--save-dir', type=str, default="data", help='the directory where all the data are saved')
+    arg_parser.add_argument(
+        '--subj-id',
+        type=int,
+        default=1,
+        help='subject ID',
+    )
+    arg_parser.add_argument(
+        '--session-id',
+        type=int,
+        default=0,
+        help='session ID',
+    )
+    arg_parser.add_argument(
+        '--max-episodes',
+        type=int,
+        default=-1,
+        help='total number of episodes',
+    )
+    arg_parser.add_argument(
+        '--max-seconds',
+        type=int,
+        default=1200,
+        help='ends after reaching max seconds (default: 20 min)',
+    )
+    arg_parser.add_argument(
+        '--seed',
+        type=int,
+        default=0,
+        help='base seed value for configuring the initial episode of the session',
+    )
+    arg_parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="do not save any data",
+    )
+    arg_parser.add_argument(
+        '--save-dir',
+        type=str,
+        default="data",
+        help='the directory where all the data are saved',
+    )
     args = arg_parser.parse_args()
 
     run_session(
         subj_id=args.subj_id,
         session_id=args.session_id,
-        seed=args.seed,
         max_episodes=args.max_episodes,
         max_seconds=args.max_seconds,
+        seed=args.seed,
         save=not args.no_save,
         base_save_dir=args.save_dir
     )
