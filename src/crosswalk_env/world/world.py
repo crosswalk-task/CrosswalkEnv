@@ -5,7 +5,7 @@ from crosswalk_env.world.cars import Cars
 from crosswalk_env.world.roads import Roads
 
 class World:
-    def __init__(self, agent_x_range, map_grid_width, map_grid_height, initial_height_padding, camera_width, pix_square_size, basic_score_per_grid, steps_per_second, random, player_asset_info, car_details_dict):
+    def __init__(self, agent_x_range, map_grid_width, map_grid_height, initial_height_padding, camera_width, pix_square_size, basic_score_per_grid, steps_per_second, penalty_per_car_color, random, player_asset_info, car_details_dict):
         self.random = random
         self.map_grid_width = map_grid_width
         self.map_grid_height = map_grid_height
@@ -13,7 +13,7 @@ class World:
 
         self.agent = Agent(agent_x_range, map_grid_width, map_grid_height, pix_square_size, steps_per_second, player_asset_info)
         self.initial_agent_y = self.agent.cur_location[1]
-        self.roads = Roads(self.agent, camera_width, map_grid_height, initial_height_padding, self.random)
+        self.roads = Roads(self.agent, camera_width, map_grid_height, initial_height_padding, penalty_per_car_color, self.random)
         self.cars = Cars.generate_cars(self.agent, self.roads, pix_square_size, map_grid_width, steps_per_second, car_details_dict, random)
 
         self.row_to_cars_dict = {}
@@ -52,7 +52,7 @@ class World:
             car_rectangle = car.get_hitbox()
             if is_overlapping_rectangles(agent_rect, car_rectangle):
                 self.agent.set_dead()
-                return True, car.car_details.penalty.value
+                return True, car.car_details.penalty
         return False, 0
 
     def target_lane_reached(self):

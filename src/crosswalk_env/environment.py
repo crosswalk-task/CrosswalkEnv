@@ -4,7 +4,8 @@ import pygame
 import numpy as np
 
 from crosswalk_env.world.world import World
-from crosswalk_env.common import Car, load_player_asset_info, Penalty, get_max_car_grid_width, load_car_details_dict, Action, ACTION_TO_DELTA, ACTION_DURATION, ACTION_LATENCY, is_overlapping, is_overlapping_rectangles
+from crosswalk_env.common import Car, load_player_asset_info, get_max_car_grid_width, load_car_details_dict, Action, ACTION_TO_DELTA, ACTION_DURATION, ACTION_LATENCY, is_overlapping, is_overlapping_rectangles
+from crosswalk_env.common.gameobject.car_details import CarColorType
 
 class CrosswalkEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -31,11 +32,12 @@ class CrosswalkEnv(gym.Env):
             time_left_warning_threshold_sec=10,
             basic_score_per_grid=50,
             bonus_score_per_sec=50,
+            penalty_per_car_color={ "RED": 1000, "YELLOW": 500, "GREEN": 100 },
             gameover_screen_time=5000,
             fixed_episode_seed_range=None,
             render_mode=None,
             realtime=False
-        ):
+    ):
         if width < 12: raise Exception("minimum width is 13")
         if height < 6: raise Exception("minimum height is 6")
         if initial_height_padding < 0: raise Exception("initial_height_padding can not be negative")
@@ -43,6 +45,19 @@ class CrosswalkEnv(gym.Env):
         if camera_height%2 == 0: raise Exception("minimum camera_height should be an odd number")
         if time_left_warning_threshold_sec > 0 and episode_duration_sec < time_left_warning_threshold_sec: 
             raise Exception(f"episode duration ({episode_duration_sec} sec) should be longer than warning threshold ({time_left_warning_threshold_sec} sec)")
+
+        valid_colors = {color.name for color in CarColorType}
+        invalid_colors = set(penalty_per_car_color) - valid_colors
+        if invalid_colors:
+            raise ValueError(
+                f"Invalid car colors: {invalid_colors}. "
+                f"(only {', '.join(sorted(valid_colors))} are available)"
+            )
+        # NOTE: disable car colors without penalty configuration
+        self.penalty_per_car_color = {
+            color: penalty for color, penalty in penalty_per_car_color.items() if penalty > 0
+        }
+
         self.title = title
         self.map_grid_width = width
         self.map_grid_height = height
@@ -68,7 +83,7 @@ class CrosswalkEnv(gym.Env):
         self.render_mode = render_mode
         self.render_sprite = render_mode is not None
         self.player_asset_info = load_player_asset_info(self.pix_square_size, self.render_sprite)
-        self.car_details_dict = load_car_details_dict(self.pix_square_size, self.render_sprite)
+        self.car_details_dict = load_car_details_dict(self.penalty_per_car_color, self.pix_square_size, self.render_sprite)
         self.window = None
         self.clock = None
 
@@ -89,8 +104,8 @@ class CrosswalkEnv(gym.Env):
         self.real_time_step_passed = 0
         self.obs = None
         self.info = None
-
-        self.max_car_penalty = Penalty.HIGH.value
+        
+        self.max_car_penalty = max(penalty_per_car_color.values())
         self.max_car_speed = max(Car.CAR_SPEEDS)
         self.max_car_width = get_max_car_grid_width()
         agent_x_buffer = 2 + int(max(self.max_car_width, self.camera_width)/2)
@@ -128,6 +143,7 @@ class CrosswalkEnv(gym.Env):
             self.pix_square_size,
             self.basic_score_per_grid,
             self.steps_per_second,
+            self.penalty_per_car_color,
             self.np_random,
             self.player_asset_info,
             self.car_details_dict,
@@ -473,7 +489,7 @@ class CrosswalkEnv(gym.Env):
                 if road.crosswalk is not None:
                     if is_overlapping(road.crosswalk.left_end, road.crosswalk.right_end, grid_x_left_end, grid_x_right_end):
                         self.target_road_crosswalk_visible = True
-                penalty = road.risk_detail.penalty.value / self.max_car_penalty
+                penalty = road.penalty / self.max_car_penalty
                 is_crossing = road.bottom_y >= agent_y >= road.top_y
                 if is_crossing:
                     dist_end_of_target_road = (agent_y - road.top_y) / 4
@@ -664,8 +680,8 @@ class CrosswalkEnv(gym.Env):
                     "top_y": road.top_y,
                     "bottom_y": road.bottom_y,
                     "going_right": road.going_right,
-                    "car_color_type": road.car_color_type.value, # 0=GREEN, 1=YELLOW, 2=RED
-                    "penalty": road.risk_detail.penalty.value, # 100=GREEN, 500=YELLOW, 1000=RED
+                    "car_color_type": road.car_color_type.value, # default: 0=GREEN, 1=YELLOW, 2=RED
+                    "penalty": road.penalty, # default: 100=GREEN, 500=YELLOW, 1000=RED
                     "crosswalk": None if road.crosswalk is None else {"uid": road.crosswalk.uid, "col": road.crosswalk.col},
                 })
             cars_metadata = []
@@ -675,7 +691,7 @@ class CrosswalkEnv(gym.Env):
                     "road_uid": car.road.uid,
                     "rows": car.rows,
                     "car_type": car.car_details.car_type,
-                    "penalty": car.car_details.penalty.value,
+                    "penalty": car.car_details.penalty,
                     "go_right" :car.car_details.go_right,
                     "car_grid_height": car.car_details.car_grid_height,
                     "car_grid_width": car.car_details.car_grid_width,
@@ -713,7 +729,7 @@ class CrosswalkEnv(gym.Env):
             target_road_info = {
                 "target_road_uid": self.target_road.uid,
                 "road_size": self.target_road.bottom_y - self.target_road.top_y + 1, 
-                "penalty": self.target_road.risk_detail.penalty.value,
+                "penalty": self.target_road.penalty,
                 "has_crosswalk": self.target_road.crosswalk is not None,
             }
 

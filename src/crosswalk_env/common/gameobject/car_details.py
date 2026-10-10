@@ -4,11 +4,6 @@ from enum import Enum
 
 import pygame
 
-class Penalty(Enum):
-    LOW = 100
-    MEDIUM = 500
-    HIGH = 1000
-
 class CarColorType(Enum):
     GREEN = 0
     YELLOW = 1
@@ -22,17 +17,8 @@ class CarColorType(Enum):
         }
         return string_map[self]
 
-class RiskDetail:
-    def __init__(self, color_name, color, penalty):
-        self.color_name = color_name
-        self.color = color
-        self.penalty = penalty
-
-RiskDetails = {
-    CarColorType.RED: RiskDetail(color_name="Red", color=(255, 0, 0), penalty=Penalty.HIGH),
-    CarColorType.YELLOW: RiskDetail(color_name="Yellow", color=(255, 255, 0), penalty=Penalty.MEDIUM),
-    CarColorType.GREEN: RiskDetail(color_name="Green", color=(0, 255, 0), penalty=Penalty.LOW),
-}
+    def capitalized(self):
+        return self.name.capitalize()
 
 # key = start_row_idx, value = car_heights 
 CARS_PER_LANE_PAIR_COMPOSITION = [
@@ -92,11 +78,10 @@ def get_max_car_grid_height():
     return max_height
 
 class CarDetails:
-    def __init__(self, car_type, color_type, go_right, pix_square_size, car_grid_height, ratio, render_sprite, height_buffer = 0.1):
+    def __init__(self, car_type, color_type, penalty, go_right, pix_square_size, car_grid_height, ratio, render_sprite, height_buffer = 0.1):
         self.car_type = car_type
-        risk_detail = RiskDetails[color_type]
         self.color = color_type
-        self.penalty = risk_detail.penalty
+        self.penalty = penalty
         self.go_right = go_right
 
         self.car_grid_height = car_grid_height - height_buffer # NOTE: needed to handle the overlap between the lanes
@@ -107,20 +92,21 @@ class CarDetails:
         self.image = None
         if render_sprite:
             direction = "EAST" if go_right else "WEST"
-            file_name = f"{risk_detail.color_name}_{car_type}_CLEAN_{direction}_000_cropped.png"
+            file_name = f"{color_type.capitalized()}_{car_type}_CLEAN_{direction}_000_cropped.png"
             current_dir = os.path.dirname(os.path.abspath(__file__))
             image_path = os.path.join(current_dir, "../..", "sprites/cars/", file_name)
             object_image = pygame.image.load(image_path)
             self.image = pygame.transform.scale(object_image, (self.car_width, self.car_height))
 
-def load_car_details_dict(pix_square_size, render_sprite):
+def load_car_details_dict(penalty_per_car_color, pix_square_size, render_sprite):
     car_details_dict = {}
     for height in [1, 2]:
         for i in range(len(CAR_CANDIDATES[height])):
             (car_type, ratio) = CAR_CANDIDATES[height][i]
             car_details_dict[car_type] = {}
-            for color_type in RiskDetails.keys():
+            for car_color, penalty in penalty_per_car_color.items():
+                color_type = CarColorType[car_color]
                 car_details_dict[car_type][color_type] = {}
                 for go_right in [False, True]:
-                    car_details_dict[car_type][color_type][go_right] = CarDetails(car_type, color_type, go_right, pix_square_size, height, ratio, render_sprite)
+                    car_details_dict[car_type][color_type][go_right] = CarDetails(car_type, color_type, penalty, go_right, pix_square_size, height, ratio, render_sprite)
     return car_details_dict

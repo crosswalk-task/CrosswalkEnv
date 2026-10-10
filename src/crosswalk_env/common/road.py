@@ -1,15 +1,15 @@
-from crosswalk_env.common.gameobject.car_details import CarColorType, RiskDetails
+from crosswalk_env.common.gameobject.car_details import CarColorType
 
 class Road:
     COMPOSITION_SIZE = 2
 
-    def __init__(self, uid, top_y, bottom_y, going_right_rows, random, crosswalk = None):
+    def __init__(self, uid, top_y, bottom_y, going_right_rows, car_color, penalty, crosswalk = None):
         self.uid = uid
         self.top_y = top_y
         self.bottom_y = bottom_y
         self.going_right = going_right_rows
-        self.car_color_type = random.choice([CarColorType.RED, CarColorType.YELLOW, CarColorType.GREEN])
-        self.risk_detail = RiskDetails[self.car_color_type]
+        self.car_color_type = CarColorType[car_color]
+        self.penalty = penalty
         self.crosswalk = crosswalk
 
 class CrossWalk:

@@ -16,7 +16,7 @@ class Roads:
     ROAD_WHITE_COLOR = (250, 250, 250)
     SAFE_WHITE_COLOR = (217, 217, 217)
 
-    def __init__(self, agent, camera_width, map_grid_height, initial_height_padding, random):
+    def __init__(self, agent, camera_width, map_grid_height, initial_height_padding, penalty_per_car_color, random):
         safe_end_lane_count = 1
         safe_start_lane_count = 1 + initial_height_padding # save safe zones near start lane
         max_car_grid_height = get_max_car_grid_height()
@@ -85,7 +85,9 @@ class Roads:
                 uid += 1
                 top_y, bottom_y = danger_start_idx, row_idx-1
                 going_right_rows = [row_type == RowType.CAR_GOING_RIGHT for row_type in row_types[top_y:bottom_y+1]]
-                roads.append(Road(uid, top_y, bottom_y, going_right_rows, random))
+                car_color = random.choice(list(penalty_per_car_color))
+                penalty = penalty_per_car_color[car_color]
+                roads.append(Road(uid, top_y, bottom_y, going_right_rows, car_color, penalty))
                 danger_start_idx = None
 
         # add crosswalks on road

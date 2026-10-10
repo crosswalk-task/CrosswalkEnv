@@ -72,14 +72,22 @@ def _play_session(
         time_left_warning_threshold_sec=10,
         basic_score_per_grid=50,
         bonus_score_per_sec=50,
+        red_car_penalty=1000,
+        yellow_car_penalty=500,
+        green_car_penalty=100,
         base_seed=0,
     ):
     env = CrosswalkEnv(
-        render_mode="human",
         episode_duration_sec=episode_duration_sec,
         time_left_warning_threshold_sec=time_left_warning_threshold_sec,
         basic_score_per_grid=basic_score_per_grid,
         bonus_score_per_sec=bonus_score_per_sec,
+        penalty_per_car_color={ 
+            "RED": red_car_penalty,
+            "YELLOW": yellow_car_penalty,
+            "GREEN": green_car_penalty,
+        },
+        render_mode="human",
         realtime=True
     )
     start_timestamp = int(time.time())
@@ -113,6 +121,9 @@ def run_session(
         time_left_warning_threshold_sec=10,
         basic_score_per_grid=50,
         bonus_score_per_sec=50,
+        red_car_penalty=1000,
+        yellow_car_penalty=500,
+        green_car_penalty=100,
         seed=0,
         save=True,
         base_save_dir="data",
@@ -127,6 +138,9 @@ def run_session(
             time_left_warning_threshold_sec=time_left_warning_threshold_sec,
             basic_score_per_grid=basic_score_per_grid,
             bonus_score_per_sec=bonus_score_per_sec,
+            red_car_penalty=red_car_penalty,
+            yellow_car_penalty=yellow_car_penalty,
+            green_car_penalty=green_car_penalty,
             base_seed=seed,
         )
         return
@@ -152,6 +166,9 @@ def run_session(
         time_left_warning_threshold_sec=time_left_warning_threshold_sec,
         basic_score_per_grid=basic_score_per_grid,
         bonus_score_per_sec=bonus_score_per_sec,
+        red_car_penalty=red_car_penalty,
+        yellow_car_penalty=yellow_car_penalty,
+        green_car_penalty=green_car_penalty,
         base_seed=seed,
     )
 
@@ -193,6 +210,7 @@ if __name__ == "__main__":
         default=10,
         help='highlight the remaining time in red when it reaches this threshold (default: 10 seconds; set to 0 to disable)',
     )
+
     arg_parser.add_argument(
         '--basic-score-per-grid',
         type=int,
@@ -205,6 +223,26 @@ if __name__ == "__main__":
         default=50,
         help='bonus score for each second left (default: 50)',
     )
+
+    arg_parser.add_argument(
+        '--red-car_penalty',
+        type=int,
+        default=1000,
+        help='penalty on collision with red vehicles (default: 1000; set to 0 to disable red car appearance)',
+    )
+    arg_parser.add_argument(
+        '--yellow-car_penalty',
+        type=int,
+        default=500,
+        help='penalty on collision with yellow vehicles (default: 500; set to 0 to disable yellow car appearance)',
+    )
+    arg_parser.add_argument(
+        '--green-car_penalty',
+        type=int,
+        default=100,
+        help='penalty on collision with green vehicles (default: 100; set to 0 to disable green car appearance)',
+    )
+
     arg_parser.add_argument(
         '--seed',
         type=int,
@@ -233,6 +271,9 @@ if __name__ == "__main__":
         time_left_warning_threshold_sec=args.time_left_warning_threshold_sec,
         basic_score_per_grid=args.basic_score_per_grid,
         bonus_score_per_sec=args.bonus_score_per_sec,
+        red_car_penalty=args.red_car_penalty,
+        yellow_car_penalty=args.yellow_car_penalty,
+        green_car_penalty=args.green_car_penalty,
         seed=args.seed,
         save=not args.no_save,
         base_save_dir=args.save_dir
