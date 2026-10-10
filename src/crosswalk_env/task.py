@@ -68,10 +68,18 @@ def _play_session(
         session_id,
         max_seconds,
         max_episodes=-1,
+        episode_duration_sec=30,
+        time_left_warning_threshold_sec=10,
+        basic_score_per_grid=50,
+        bonus_score_per_sec=50,
         base_seed=0,
     ):
     env = CrosswalkEnv(
         render_mode="human",
+        episode_duration_sec=episode_duration_sec,
+        time_left_warning_threshold_sec=time_left_warning_threshold_sec,
+        basic_score_per_grid=basic_score_per_grid,
+        bonus_score_per_sec=bonus_score_per_sec,
         realtime=True
     )
     start_timestamp = int(time.time())
@@ -101,6 +109,10 @@ def run_session(
         session_id=1,
         max_episodes=-1,
         max_seconds=1200,
+        episode_duration_sec=30,
+        time_left_warning_threshold_sec=10,
+        basic_score_per_grid=50,
+        bonus_score_per_sec=50,
         seed=0,
         save=True,
         base_save_dir="data",
@@ -111,6 +123,10 @@ def run_session(
             session_id=session_id,
             max_seconds=max_seconds,
             max_episodes=max_episodes,
+            episode_duration_sec=episode_duration_sec,
+            time_left_warning_threshold_sec=time_left_warning_threshold_sec,
+            basic_score_per_grid=basic_score_per_grid,
+            bonus_score_per_sec=bonus_score_per_sec,
             base_seed=seed,
         )
         return
@@ -132,6 +148,10 @@ def run_session(
         session_id=session_id,
         max_episodes=max_episodes,
         max_seconds=max_seconds,
+        episode_duration_sec=episode_duration_sec,
+        time_left_warning_threshold_sec=time_left_warning_threshold_sec,
+        basic_score_per_grid=basic_score_per_grid,
+        bonus_score_per_sec=bonus_score_per_sec,
         base_seed=seed,
     )
 
@@ -162,6 +182,30 @@ if __name__ == "__main__":
         help='ends after reaching max seconds (default: 20 min)',
     )
     arg_parser.add_argument(
+        '--episode-duration-sec', 
+        type=int, 
+        default=30, 
+        help='maximum time limit for each episode (default: 30 seconds)',
+    )
+    arg_parser.add_argument(
+        '--time-left-warning-threshold-sec',
+        type=int,
+        default=10,
+        help='highlight the remaining time in red when it reaches this threshold (default: 10 seconds; set to 0 to disable)',
+    )
+    arg_parser.add_argument(
+        '--basic-score-per-grid',
+        type=int,
+        default=50,
+        help='basic score per unit of upward movement (default: 50)',
+    )
+    arg_parser.add_argument(
+        '--bonus-score-per-sec',
+        type=int,
+        default=50,
+        help='bonus score for each second left (default: 50)',
+    )
+    arg_parser.add_argument(
         '--seed',
         type=int,
         default=0,
@@ -185,6 +229,10 @@ if __name__ == "__main__":
         session_id=args.session_id,
         max_episodes=args.max_episodes,
         max_seconds=args.max_seconds,
+        episode_duration_sec=args.episode_duration_sec,
+        time_left_warning_threshold_sec=args.time_left_warning_threshold_sec,
+        basic_score_per_grid=args.basic_score_per_grid,
+        bonus_score_per_sec=args.bonus_score_per_sec,
         seed=args.seed,
         save=not args.no_save,
         base_save_dir=args.save_dir

@@ -17,9 +17,6 @@ class CrosswalkEnv(gym.Env):
     EXTRA_WIDTH = 500
     EXTRA_HEIGHT = 200
 
-    BONUS_SCORE_PER_SEC = 50
-    TIME_OVER_ALERT_SEC = 10
-
     def __init__(
             self,
             title="Crosswalk Task",
@@ -31,6 +28,9 @@ class CrosswalkEnv(gym.Env):
             steps_per_second=10,
             gamescreen_width_fixed=False,
             episode_duration_sec=30,
+            time_left_warning_threshold_sec=10,
+            basic_score_per_grid=50,
+            bonus_score_per_sec=50,
             gameover_screen_time=5000,
             fixed_episode_seed_range=None,
             render_mode=None,
@@ -41,7 +41,8 @@ class CrosswalkEnv(gym.Env):
         if initial_height_padding < 0: raise Exception("initial_height_padding can not be negative")
         if camera_height < 7: raise Exception("minimum camera_height is 7")
         if camera_height%2 == 0: raise Exception("minimum camera_height should be an odd number")
-        if episode_duration_sec < 10: raise Exception("minimum episode_duration_sec is 10")
+        if time_left_warning_threshold_sec > 0 and episode_duration_sec < time_left_warning_threshold_sec: 
+            raise Exception(f"episode duration ({episode_duration_sec} sec) should be longer than warning threshold ({time_left_warning_threshold_sec} sec)")
         self.title = title
         self.map_grid_width = width
         self.map_grid_height = height
@@ -79,6 +80,9 @@ class CrosswalkEnv(gym.Env):
         self.best_rewards = 0
         self.GAME_TIME_MS = (episode_duration_sec + 1) * 1000
         self.time_left = self.GAME_TIME_MS
+        self.time_left_warning_threshold_sec = time_left_warning_threshold_sec
+        self.basic_score_per_grid = basic_score_per_grid
+        self.bonus_score_per_sec = bonus_score_per_sec
         self.elapsed = 0
         self.game_over = False
         self.game_end_extra_score = 0
@@ -122,6 +126,7 @@ class CrosswalkEnv(gym.Env):
             self.initial_height_padding,
             self.camera_width,
             self.pix_square_size,
+            self.basic_score_per_grid,
             self.steps_per_second,
             self.np_random,
             self.player_asset_info,
@@ -171,8 +176,8 @@ class CrosswalkEnv(gym.Env):
         if not self.world.agent.is_dead and self.world.target_lane_reached():
             self.game_over = True
             game_end_extra_score = self._get_time_left_sec()
-            cumulative_reward += game_end_extra_score * self.BONUS_SCORE_PER_SEC
-            self.game_end_extra_score = game_end_extra_score * self.BONUS_SCORE_PER_SEC
+            cumulative_reward += game_end_extra_score * self.bonus_score_per_sec
+            self.game_end_extra_score = game_end_extra_score * self.bonus_score_per_sec
 
         cumulative_reward += self.world.calculate_cum_crossing_rewards()
         self.cur_rewards += cumulative_reward
@@ -310,7 +315,9 @@ class CrosswalkEnv(gym.Env):
 
             # update time left
             time_left_sec = self._get_time_left_sec()
-            time_left_sec_color = self.UI_TEXT_WHITE_COLOR if time_left_sec > self.TIME_OVER_ALERT_SEC else self.AGENT_DEAD_TEXT_COLOR
+            time_left_sec_color = self.UI_TEXT_WHITE_COLOR
+            if self.time_left_warning_threshold_sec > 0 and time_left_sec <= self.time_left_warning_threshold_sec:
+                time_left_sec_color = self.AGENT_DEAD_TEXT_COLOR
             self._render_text(right_game_x - 30, top_y + 30, f"Time Left: {time_left_sec}", time_left_sec_color, font_size_m, order="right")
         else:
             # unreachable area
@@ -343,7 +350,10 @@ class CrosswalkEnv(gym.Env):
 
             # update time left
             time_left_sec = self._get_time_left_sec()
-            time_left_sec_color = self.UI_TEXT_WHITE_COLOR if time_left_sec > self.TIME_OVER_ALERT_SEC else self.AGENT_DEAD_TEXT_COLOR
+            time_left_sec_color = self.UI_TEXT_WHITE_COLOR
+            if self.time_left_warning_threshold_sec > 0 and time_left_sec <= self.time_left_warning_threshold_sec:
+                time_left_sec_color = self.AGENT_DEAD_TEXT_COLOR
+
             self._render_text(right_ui_x, top_y - font_size_s - 5, f"Time Left: {time_left_sec}", time_left_sec_color, font_size_s)
 
         if self.render_mode == "human":
