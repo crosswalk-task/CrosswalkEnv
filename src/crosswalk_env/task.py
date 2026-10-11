@@ -114,7 +114,7 @@ def _play_session(
 
 def run_session(
         subj_id=1,
-        session_id=1,
+        session_id=0,
         max_episodes=-1,
         max_seconds=1200,
         episode_duration_sec=30,
